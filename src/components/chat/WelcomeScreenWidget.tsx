@@ -57,7 +57,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     </div>
   )}
   
-  <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-700 to-black bg-clip-text text-transparent mb-2 animate-fade-in">Welcome to The Behruz Theory</h1>
+  <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-700 to-black bg-clip-text text-transparent mb-2 animate-fade-in">Welcome to Levi's India Store</h1>
   <p className="text-gray-700 text-base mb-6 animate-fade-in-delay">How can we help you today?</p>
 </div>
 

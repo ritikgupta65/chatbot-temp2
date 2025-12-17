@@ -24,11 +24,11 @@ const defaultTheme: ThemeConfig = {
   primaryGradient: 'from-gray-800 to-black',
   secondaryGradient: 'from-gray-600 to-gray-800',
   accentColor: 'gray-800',
-  logoUrl: 'https://cgahzcwiqcblmkwblqaj.supabase.co/storage/v1/object/public/cellular-text-pdf/The%20Behruz%20theory.png',
-  brandName: "The Behruz Theory",
-  welcomeMessage: "Welcome to The Behruz Theory. How can we assist you today?",
+  logoUrl: 'https://media.designrush.com/inspirations/758970/conversions/1-preview.jpg',
+  brandName: "Levi's India Store",
+  welcomeMessage: "Welcome to Levi's India Store. How can we assist you today?",
   quickActions: ['Try-On', 'Track my order', 'Size guide', 'Contact support'],
-  badgeImages: ['https://cgahzcwiqcblmkwblqaj.supabase.co/storage/v1/object/public/cellular-text-pdf/itee.jpg' , 'https://c8.alamy.com/comp/2C6M1E6/1890-c-usa-the-usa-german-born-industrial-blue-jeans-denim-creator-levi-strauss-lb-strau-1829-1902-businessman-of-levi-strauss-co-industria-industriale-ritratto-portrait-history-foto-storica-industriale-industry-industria-imprenditore-abbigliamento-fashion-moda-maschile-beard-barba-tie-bow-cravatta-papillon-collar-colletto-archivio-gbb-2C6M1E6.jpg']
+  badgeImages: ['https://a57.foxnews.com/static.foxbusiness.com/foxbusiness.com/content/uploads/2019/03/0/0/LEVI-CEO-IPO.jpg?ve=1&tl=1' , 'https://c8.alamy.com/comp/2C6M1E6/1890-c-usa-the-usa-german-born-industrial-blue-jeans-denim-creator-levi-strauss-lb-strau-1829-1902-businessman-of-levi-strauss-co-industria-industriale-ritratto-portrait-history-foto-storica-industriale-industry-industria-imprenditore-abbigliamento-fashion-moda-maschile-beard-barba-tie-bow-cravatta-papillon-collar-colletto-archivio-gbb-2C6M1E6.jpg']
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
