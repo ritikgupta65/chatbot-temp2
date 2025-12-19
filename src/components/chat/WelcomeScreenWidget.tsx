@@ -1,5 +1,7 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { MessageCircle, Clock, Phone, User, ArrowRight } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
+
 
 interface WelcomeScreenProps {
   onStartChat: (message?: string) => void;
@@ -117,16 +119,25 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         {/* Compact Additional Actions */}
         <div className="space-y-2">
           <button
+          onClick={() =>
+          window.open(
+            'https://api.whatsapp.com/send?phone=918252725417&text=Hi',
+            '_blank'
+          )
+        }
             className="w-full p-3 bg-gradient-to-r from-gray-700/20 to-black/20 backdrop-blur-md rounded-xl border border-gray-600/30 text-gray-800 hover:from-gray-800/30 hover:to-black/30 transition-all duration-300 group flex items-center justify-between transform hover:scale-[1.01] shadow-sm hover:shadow-md"
           >
             <div className="flex items-center">
-              <Phone className="w-4 h-4 mr-2 text-gray-700" />
-              <span className="font-medium text-sm">Start a live call</span>
+              {/* <Phone className="w-4 h-4 mr-2 text-gray-700" /> */}
+              <FaWhatsapp className="w-4 h-4 mr-2 text-gray-700" />
+              
+              <span className="font-medium text-sm">Connect on WhatsAp</span>
             </div>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300 text-gray-700" />
           </button>
 
           <button
+            onClick={() => handleQuickAction('form')}
             className="w-full p-3 bg-gradient-to-r from-gray-700/20 to-black/20 backdrop-blur-md rounded-xl border border-gray-600/30 text-gray-800 hover:from-gray-800/30 hover:to-black/30 transition-all duration-300 group flex items-center justify-between transform hover:scale-[1.01] shadow-sm hover:shadow-md"
           >
             <div className="flex items-center">

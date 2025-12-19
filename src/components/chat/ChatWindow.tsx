@@ -54,24 +54,50 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     
     let cleaned = text.trim();
     
-    // Remove excessive repetitions of words
-    cleaned = cleaned.replace(/\b(\w+)(\s+\1\b)+/gi, '$1');
-    
-    // Remove repeated phrases (up to 5 words)
-    cleaned = cleaned.replace(/\b(\w+(?:\s+\w+){0,4})\s+\1\b/gi, '$1');
+    // Only remove excessive repetitions (3+ times) - less aggressive
+    cleaned = cleaned.replace(/\b(\w+)(\s+\1){2,}\b/gi, '$1');
     
     // Clean up multiple spaces
     cleaned = cleaned.replace(/\s+/g, ' ');
     
-    // Remove stuttering patterns like "or or" "uh uh"
-    cleaned = cleaned.replace(/\b(\w{1,3})\s+\1\b/gi, '$1');
-    
-    // Clean up common speech patterns
+    // Clean up common speech patterns only
     cleaned = cleaned.replace(/\b(uh|um|ah)\s+/gi, '');
     cleaned = cleaned.replace(/\s+,/g, ',');
     cleaned = cleaned.replace(/\s+\./g, '.');
     
     return cleaned.trim();
+  };
+
+  // Remove duplicate sentences/fragments to avoid repeated transcript lines
+  const dedupeFragments = (text: string): string => {
+    if (!text) return '';
+
+    const fragments = text
+      .split(/(?<=[.!?])\s+/)
+      .map(fragment => fragment.trim())
+      .filter(Boolean);
+
+    if (fragments.length === 0) return text;
+
+    const unique: string[] = [];
+
+    fragments.forEach(fragment => {
+      const normalized = fragment.toLowerCase();
+      const isDuplicate = unique.some(existing => {
+        const existingNormalized = existing.toLowerCase();
+        if (normalized === existingNormalized) return true;
+        if (existingNormalized.includes(normalized) || normalized.includes(existingNormalized)) return true;
+        return calculateSimilarity(existingNormalized, normalized) > 0.9;
+      });
+
+      if (!isDuplicate) {
+        unique.push(fragment);
+      }
+    });
+
+    if (unique.length === 0) return text;
+
+    return unique.join(' ').replace(/\s+,/g, ',').replace(/\s+\./g, '.').trim();
   };
 
   // Check if text is likely a continuation/update of previous text
@@ -100,7 +126,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const merged: Message[] = [];
     const processedTexts = new Set<string>();
     let messageId = 0;
-    const TIME_THRESHOLD = 1000; // 3 seconds for same speaker
+    const TIME_THRESHOLD = 2000; // 2 seconds for same speaker
     const COMPLETION_THRESHOLD = 100; // 1.5 seconds to consider message complete
 
     // Group transcript by speaker and time
@@ -116,7 +142,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     transcript.forEach((msg) => {
       const cleanedText = cleanText(msg.text);
-      if (!cleanedText) return;
+      if (!cleanedText) {
+        return;
+      }
 
       const shouldStartNewGroup = !currentGroup || 
         currentGroup.role !== msg.role || 
@@ -145,7 +173,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           // Add as new text only if it's not a shorter version of existing text
           const isDuplicate = currentGroup.texts.some((existingText: string) => {
             const similarity = calculateSimilarity(cleanedText.toLowerCase(), existingText.toLowerCase());
-            return similarity > 0.85;
+            return similarity > 0.95; // Only block near-exact duplicates
           });
           
           if (!isDuplicate) {
@@ -189,15 +217,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       }
 
       finalText = cleanText(finalText);
+      finalText = dedupeFragments(finalText);
       
-      if (finalText && finalText.length > 2 && !processedTexts.has(finalText.toLowerCase())) {
+      // Only check for exact duplicates, allow all other messages through
+      const lowerText = finalText.toLowerCase();
+      const isExactDuplicate = Array.from(processedTexts).some(processed => processed === lowerText);
+      
+      if (finalText && finalText.length > 2 && !isExactDuplicate) {
         merged.push({
           id: `transcript-${messageId++}`,
           content: finalText,
           sender: group.role === 'user' ? 'user' : 'bot',
           timestamp: new Date(group.startTime),
         });
-        processedTexts.add(finalText.toLowerCase());
+        processedTexts.add(lowerText);
       }
     });
 
@@ -226,7 +259,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   
   // Final deduplication with existing messages
   const existingContents = new Set(
-    messages.map(msg => cleanText(msg.content).toLowerCase())
+    messages.map(msg => cleanText(msg.content as string).toLowerCase())
   );
   
   const filteredTranscriptMessages = transcriptMessages.filter(transcriptMsg => {

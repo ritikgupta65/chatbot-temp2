@@ -198,7 +198,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onStartChat }) =
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`flex max-w-[220px] sm:max-w-[260px] lg:max-w-[300px] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+      <div className={`flex max-w-[300px] min-w-[180px] w-[140px ] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}> 
         {/* Compact Avatar */}
         <div className={`flex-shrink-0 ${isUser ? 'ml-2' : 'mr-2'}`}>
           {isUser ? (

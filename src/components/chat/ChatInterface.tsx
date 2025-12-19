@@ -67,8 +67,8 @@ const ChatInterface = () => {
     }
   };
 
-  const apiKey = '4990af9d-ee12-4591-a103-2810f3d78126';
-  const assistantId = 'ea3b9464-bb40-43ec-a4d0-6c9728923143';
+  const apiKey = 'c24b5ae5-acc4-446a-a601-f590170aba94';
+  const assistantId = 'f6eb5237-b933-4dc0-9257-c049347309fc';
   const { isConnected, isSpeaking, startCall, stopCall, transcript, clearTranscript } = useVapi(apiKey, assistantId);
 
   // Monitor for new bot messages when chatbot is on welcome screen
@@ -88,6 +88,10 @@ const ChatInterface = () => {
   }, [regularMessages, tryOnMessages, chatState, isTryOnMode]);
 
   const startChat = (initialMessage?: string, productImageUrl?: string) => {
+    if (initialMessage === 'form') {
+      setChatState('form');
+      return;
+    }
     if (initialMessage === 'Try-On') {
       // Try-On mode: Switch to Try-On and load its history
       setIsTryOnMode(true);

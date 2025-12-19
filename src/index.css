@@ -194,4 +194,14 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  .border-slate-300\/60 {
+    border-color: #616a75 !important;
+}
+.from-slate-200 {
+    --tw-gradient-from: #0003 var(--tw-gradient-from-position) !important;
+}
+.to-slate-200 {
+    --tw-gradient-to: #0003 var(--tw-gradient-to-position) !important;
+}
 }
