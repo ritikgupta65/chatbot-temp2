@@ -131,7 +131,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
               {/* <Phone className="w-4 h-4 mr-2 text-gray-700" /> */}
               <FaWhatsapp className="w-4 h-4 mr-2 text-gray-700" />
               
-              <span className="font-medium text-sm">Connect on WhatsAp</span>
+              <span className="font-medium text-sm">Connect on WhatsApp</span>
             </div>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300 text-gray-700" />
           </button>

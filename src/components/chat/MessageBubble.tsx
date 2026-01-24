@@ -2,6 +2,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Message } from '@/types/chat';
 import { User } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MessageBubbleProps {
   message: Message;
@@ -169,8 +170,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onStartChat }) =
     );
   };
 
+  // --- CHECK IF MESSAGE CONTAINS HTML ---
+  const containsHtml = (text: string) => {
+    // Check if message contains HTML tags (like try-on result)
+    return /<[a-z][\s\S]*>/i.test(text);
+  };
+
   // --- DEFAULT TEXT FORMATTER ---
   const formatMessage = (text: string) => {
+    // If the message already contains HTML (like try-on result), return it as-is
+    if (containsHtml(text)) {
+      return text;
+    }
+    
     return text
       .replace(/^###\s+(.*)$/gm, '<strong>$1</strong>')
       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" class="underline text-blue-400">$1</a>')
@@ -195,6 +207,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onStartChat }) =
     typeof message.content === 'string' &&
     /\*\*Product Name\*\*:/.test(message.content) &&
     /\*\*Image URL\*\*:/.test(message.content);
+
+  // Check if this is a loading message (bot side with loading state)
+  const isLoadingMessage = !isUser && message.isLoading;
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
@@ -222,7 +237,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onStartChat }) =
             ? 'bg-gradient-to-r from-gray-700 to-black backdrop-blur-md border border-gray-600/30 text-white ml-auto shadow-md'
             : 'bg-gradient-to-r from-white/30 to-gray-100/30 backdrop-blur-md border border-gray-200/30 text-gray-900 shadow-md'} shadow-lg`}
         >
-          {isProductRecommendation ? (
+          {isLoadingMessage ? (
+            // Show skeleton loader for loading images
+            <div className="space-y-2">
+              <Skeleton className="h-[200px] w-[250px] rounded-lg" />
+              <Skeleton className="h-4 w-[150px]" />
+              <p className="text-xs text-gray-600 mt-1">Generating try-on image...</p>
+            </div>
+          ) : isProductRecommendation ? (
             renderProductCards(isUser ? message.content as string : displayedText)
           ) : (
             <div ref={messageRef} className="text-xs leading-relaxed">

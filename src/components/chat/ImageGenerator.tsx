@@ -5,12 +5,14 @@ import { getUserId } from '@/lib/userIdManager';
 interface ImageGeneratorProps {
   onGenerationComplete?: (resultImageUrl: string) => void;
   onError?: (error: string) => void;
+  onGenerationStart?: (humanImage: string, clothImage: string) => void;
   preloadedClothImage?: string | null;
 }
 
 const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   onGenerationComplete,
   onError,
+  onGenerationStart,
   preloadedClothImage,
 }) => {
   const [humanImage, setHumanImage] = useState<string | null>(null);
@@ -19,14 +21,67 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingType, setUploadingType] = useState<'human' | 'cloth' | null>(null);
   const [userId, setUserId] = useState<string>('');
+  
+  // Ref to prevent double-execution (more reliable than state)
+  const isGeneratingRef = useRef(false);
 
-  const TRY_ON_WEBHOOK_URL = 'https://ritik-n8n-e9673da43cf4.herokuapp.com/webhook/2598d12d-a13f-4759-ae5b-1e0262e33b9c';
+  // Use Vite proxy to avoid CORS issues
+  const PROXY_URL = '/api/try-on';
+  const POLL_URL = '/api/try-on-status';
 
   // Initialize userId on component mount
   useEffect(() => {
     const id = getUserId();
     setUserId(id);
-  }, []);
+  }, []); 
+
+  // Poll for result - checks every 5 seconds for up to 3 minutes
+  const pollForResult = async (pollUserId: string): Promise<string> => {
+    const maxAttempts = 20; // 16 attempts * 5 seconds = 3 minutes
+    const pollInterval = 5000; // 5 seconds
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      console.log(`Polling attempt ${attempt + 1}/${maxAttempts} for userId: ${pollUserId}`);
+      
+      try {
+        const response = await fetch(`${POLL_URL}?userId=${pollUserId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Poll response:', result);
+
+          // Handle both array response (from Google Sheets) and object response
+          const data = Array.isArray(result) ? result[0] : result;
+          
+          if (data && data.imageUrl) {
+            // If we have an imageUrl, generation is complete (regardless of status field)
+            console.log('✅ Image generation completed!');
+            console.log('Image URL:', data.imageUrl);
+            return data.imageUrl;
+          } else if (data && data.status === 'failed') {
+            throw new Error(data.error || 'Image generation failed');
+          }
+          // If no imageUrl yet, continue polling
+          console.log('Still processing, will check again...');
+        }
+      } catch (error) {
+        // Only log, don't throw - we'll retry
+        console.log('Poll error (will retry):', error);
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error('Image generation timed out after 3 minutes. Please try again.');
+  };
+
+
 
   // Update cloth image when preloaded image changes
   useEffect(() => {
@@ -70,12 +125,28 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   };
 
   const handleGenerateTryOn = async () => {
+    // Prevent double-clicks using ref (more reliable than state for async)
+    if (isGeneratingRef.current || isGenerating) {
+      console.log('Already generating, ignoring duplicate click');
+      return;
+    }
+    
     if (!humanImage || !clothImage) {
       onError?.('Please upload both human and cloth images');
       return;
     }
 
+    // Notify parent that generation is starting with both images
+    if (onGenerationStart) {
+      onGenerationStart(humanImage, clothImage);
+    }
+
+    // Set both ref and state to prevent double execution
+    isGeneratingRef.current = true;
     setIsGenerating(true);
+    console.log('=== STARTING TRY-ON GENERATION ===');
+    
+    let generationSuccessful = false;
 
     try {
       // Prepare the payload with labeled images and userId
@@ -90,8 +161,10 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         timestamp: new Date().toISOString()
       };
 
-      // Send to the specific try-on webhook
-      const response = await fetch(TRY_ON_WEBHOOK_URL, {
+      console.log('Sending request to webhook via proxy...');
+
+      // Step 1: Start the generation (quick response with executionId)
+      const startResponse = await fetch(PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,28 +172,73 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error(`Webhook request failed with status ${response.status}`);
+      console.log('Start response status:', startResponse.status);
+
+      if (!startResponse.ok) {
+        const errorText = await startResponse.text();
+        console.error('Webhook error response:', errorText);
+        throw new Error(`Request failed with status ${startResponse.status}`);
       }
 
-      const result = await response.json();
-      
-      // Handle the response from the webhook
-      if (result.resultImageUrl || result.image || result.result) {
-        const resultUrl = result.resultImageUrl || result.image || result.result;
-        onGenerationComplete?.(resultUrl);
-        
-        // Clear the images after successful generation
-        setHumanImage(null);
-        setClothImage(null);
+      // Parse start response
+      const startResult = await startResponse.json();
+      console.log('Start response:', startResult);
+
+      // Extract userId from response (generated by n8n)
+      const responseUserId = startResult.userId || userId;
+      console.log('Using userId for polling:', responseUserId);
+
+      let resultUrl: string;
+
+      // Check if we got an immediate result (fast generation) or need to poll
+      if (startResult.imageUrl || startResult.resultImageUrl || startResult.url || startResult.image) {
+        // Immediate result - extract URL directly (unlikely with 2-min generation)
+        resultUrl = startResult.imageUrl || startResult.resultImageUrl || startResult.url || startResult.image;
+        console.log('Got immediate result:', resultUrl);
+      } else if (startResult.status === 'processing' || startResult.status === 'started') {
+        // n8n acknowledged and is processing in background - start polling
+        console.log('✅ Generation started successfully! Now polling for result...');
+        resultUrl = await pollForResult(responseUserId);
       } else {
-        throw new Error('No result image received from webhook');
+        console.error('Unexpected response format:', startResult);
+        throw new Error('Unexpected response from server. Expected status: processing');
       }
+
+      // Mark as successful
+      generationSuccessful = true;
+      
+      console.log('✅ Generation successful');
+      console.log('Result URL:', resultUrl);
+      
+      // Send the result image URL to the chat
+      onGenerationComplete?.(resultUrl);
+      
+      // Clear the images after successful generation
+      setHumanImage(null);
+      setClothImage(null);
     } catch (error) {
-      console.error('Error generating try-on:', error);
-      onError?.(error instanceof Error ? error.message : 'Failed to generate try-on. Please try again.');
+      // Only show error if generation was not successful
+      if (!generationSuccessful) {
+        console.error('Error generating try-on:', error);
+        
+        let errorMessage = 'Failed to generate try-on. Please try again.';
+        
+        if (error instanceof Error && error.name === 'AbortError') {
+          errorMessage = 'Request timed out. The image generation is taking longer than expected. Please try again.';
+        } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+          errorMessage = 'Network error: Unable to connect to the server. Please check your internet connection or try again later.';
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        
+        onError?.(errorMessage);
+      }
     } finally {
+      // Reset both ref and state
+      isGeneratingRef.current = false;
       setIsGenerating(false);
+      console.log('=== TRY-ON GENERATION COMPLETE ===');
+      console.log('Generation successful:', generationSuccessful);
     }
   };
 

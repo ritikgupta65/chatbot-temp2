@@ -4,6 +4,7 @@ import WelcomeScreenWidget from './WelcomeScreenWidget';
 import ChatWindow from './ChatWindow';
 import NavigationBar from './NavigationBar';
 import ContactForm from './ContactForm';
+import OfferPage from './OfferPage';
 import { Message, ChatState } from '@/types/chat';
 import { useVapi } from '@/hooks/useVapi';
 import { getUserId } from '@/lib/userIdManager';
@@ -18,11 +19,38 @@ const ChatInterface = () => {
   const [preloadedClothImage, setPreloadedClothImage] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
   
-  // Initialize userId on component mount
+  // Initialize userId and load persisted messages on component mount
   useEffect(() => {
     const id = getUserId();
     setUserId(id);
+    
+    // Load persisted try-on messages from localStorage
+    try {
+      const savedTryOnMessages = localStorage.getItem('tryOnMessages');
+      if (savedTryOnMessages) {
+        const parsed = JSON.parse(savedTryOnMessages);
+        // Convert timestamp strings back to Date objects
+        const messagesWithDates = parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setTryOnMessages(messagesWithDates);
+      }
+    } catch (error) {
+      console.error('Error loading persisted messages:', error);
+    }
   }, []);
+  
+  // Save try-on messages to localStorage whenever they change
+  useEffect(() => {
+    if (tryOnMessages.length > 0) {
+      try {
+        localStorage.setItem('tryOnMessages', JSON.stringify(tryOnMessages));
+      } catch (error) {
+        console.error('Error saving messages:', error);
+      }
+    }
+  }, [tryOnMessages]);
   
   // Get current messages based on mode
   const messages = isTryOnMode ? tryOnMessages : regularMessages;
@@ -201,6 +229,7 @@ const ChatInterface = () => {
     // Clear only the current mode's history
     if (isTryOnMode) {
       setTryOnMessages([]);
+      localStorage.removeItem('tryOnMessages'); // Clear persisted messages
     } else {
       setRegularMessages([]);
     }
@@ -208,14 +237,22 @@ const ChatInterface = () => {
     setIsLoading(false);
   };
 
-  const addTryOnMessage = (content: string, sender: 'user' | 'bot') => {
+  const addTryOnMessage = (content: string, sender: 'user' | 'bot', isLoading: boolean = false) => {
     const newMessage: Message = {
       id: Date.now().toString(),
       content,
       sender,
       timestamp: new Date(),
+      isLoading,
     };
     setTryOnMessages((prev) => [...prev, newMessage]);
+    
+    // Return the message ID so we can update it later if needed
+    return newMessage.id;
+  };
+
+  const removeTryOnLoadingMessage = (messageId: string) => {
+    setTryOnMessages((prev) => prev.filter(msg => msg.id !== messageId));
   };
 
   return (
@@ -236,6 +273,8 @@ const ChatInterface = () => {
           </div>
         ) : chatState === 'form' ? (
           <ContactForm onGoHome={goHome} />
+        ) : chatState === 'offer' ? (
+          <OfferPage onGoHome={goHome} />
         ) : (
           <ChatWindow
             messages={messages}
@@ -249,6 +288,7 @@ const ChatInterface = () => {
             stopCall={stopCall}
             isTryOnMode={isTryOnMode}
             addTryOnMessage={addTryOnMessage}
+            removeTryOnLoadingMessage={removeTryOnLoadingMessage}
             preloadedClothImage={preloadedClothImage}
             onStartChat={startChat}
           />

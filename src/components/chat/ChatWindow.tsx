@@ -17,7 +17,8 @@ interface ChatWindowProps {
   startCall: () => void;
   stopCall: () => void;
   isTryOnMode?: boolean;
-  addTryOnMessage?: (content: string, sender: 'user' | 'bot') => void;
+  addTryOnMessage?: (content: string, sender: 'user' | 'bot', isLoading?: boolean) => string;
+  removeTryOnLoadingMessage?: (messageId: string) => void;
   preloadedClothImage?: string | null;
   onStartChat?: (initialMessage?: string, productImageUrl?: string) => void;
 }
@@ -34,6 +35,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   stopCall,
   isTryOnMode = false,
   addTryOnMessage,
+  removeTryOnLoadingMessage,
   preloadedClothImage,
   onStartChat,
 }) => {
@@ -333,6 +335,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           stopCall={stopCall}
           isTryOnMode={isTryOnMode}
           addTryOnMessage={addTryOnMessage}
+          removeTryOnLoadingMessage={removeTryOnLoadingMessage}
           preloadedClothImage={preloadedClothImage}
         />
       </div>

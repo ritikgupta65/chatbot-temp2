@@ -11,7 +11,8 @@ interface MessageInputProps {
   startCall: () => void;
   stopCall: () => void;
   isTryOnMode?: boolean;
-  addTryOnMessage?: (content: string, sender: 'user' | 'bot') => void;
+  addTryOnMessage?: (content: string, sender: 'user' | 'bot', isLoading?: boolean) => string;
+  removeTryOnLoadingMessage?: (messageId: string) => void;
   preloadedClothImage?: string | null;
 }
 
@@ -23,6 +24,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   stopCall,
   isTryOnMode = false,
   addTryOnMessage,
+  removeTryOnLoadingMessage,
   preloadedClothImage,
 }) => {
   const [message, setMessage] = useState('');
@@ -107,18 +109,105 @@ const removeImage = () => {
     }
   }, [message]);
 
+  // Store loading message ID
+  const loadingMessageIdRef = useRef<string | null>(null);
+
+  const handleTryOnStart = (humanImage: string, clothImage: string) => {
+    // When try-on generation starts, send both images as a user message (collage)
+    if (addTryOnMessage) {
+      const collageMessage = `
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+          <div style="text-align: center;">
+            <img src="${humanImage}" alt="Human Photo" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #ddd;" />
+            <p style="font-size: 10px; color: #666; margin-top: 4px;">Human Photo</p>
+          </div>
+          <div style="text-align: center;">
+            <img src="${clothImage}" alt="Clothing" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #ddd;" />
+            <p style="font-size: 10px; color: #666; margin-top: 4px;">Clothing</p>
+          </div>
+        </div>
+        <p style="font-size: 12px; color: #333; margin-top: 4px;">Generate virtual try-on</p>
+      `;
+      addTryOnMessage(collageMessage, 'user');
+      
+      // Add loading message for bot response
+      const loadingId = addTryOnMessage('Generating try-on...', 'bot', true);
+      loadingMessageIdRef.current = loadingId;
+    }
+  };
+
   const handleTryOnComplete = (resultImageUrl: string) => {
     // When try-on generation is complete, add the result directly to try-on messages
-    // WITHOUT going through the regular webhook
-    if (addTryOnMessage) {
-      const resultMessage = `<div class="try-on-result"><img src="${resultImageUrl}" alt="Try-On Result" class="max-w-[300px] rounded-lg" /><p class="text-xs text-gray-600 mt-2">✨ Virtual Try-On Result</p></div>`;
+    console.log('=== TRY-ON COMPLETE ===');
+    console.log('Result URL:', resultImageUrl);
+    
+    if (addTryOnMessage && removeTryOnLoadingMessage) {
+      // Remove loading message first
+      if (loadingMessageIdRef.current) {
+        removeTryOnLoadingMessage(loadingMessageIdRef.current);
+        loadingMessageIdRef.current = null;
+      }
+      
+      // Validate the image URL
+      if (!resultImageUrl || resultImageUrl.length < 10) {
+        console.error('Invalid result image URL');
+        addTryOnMessage('⚠️ Error: Received invalid image URL from server', 'bot');
+        return;
+      }
+      
+      // Fix Google Drive URL format for direct image display
+      let displayUrl = resultImageUrl;
+      if (resultImageUrl.includes('drive.google.com')) {
+        // Extract file ID from various Google Drive URL formats
+        let fileId = null;
+        
+        // Format: https://drive.google.com/uc?id=FILE_ID
+        if (resultImageUrl.includes('/uc?id=')) {
+          fileId = resultImageUrl.split('/uc?id=')[1].split('&')[0];
+        }
+        // Format: https://drive.google.com/file/d/FILE_ID/view
+        else if (resultImageUrl.includes('/file/d/')) {
+          fileId = resultImageUrl.split('/file/d/')[1].split('/')[0];
+        }
+        // Format: https://drive.google.com/open?id=FILE_ID
+        else if (resultImageUrl.includes('open?id=')) {
+          fileId = resultImageUrl.split('open?id=')[1].split('&')[0];
+        }
+        
+        // Use direct download format which bypasses CORS and preview screens
+        if (fileId) {
+          displayUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+          console.log('Converted Google Drive URL to direct download format');
+        }
+      }
+      console.log('Display URL:', displayUrl);
+      
+      const resultMessage = `<div class="try-on-result" style="position: relative; display: inline-block;">
+        <img src="${displayUrl}" alt="Try-On Result" style="max-width: 280px; border-radius: 8px; display: block;" crossorigin="anonymous" onerror="console.error('Image load error for URL:', '${displayUrl}'); this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<p style=\\'color: red;\\'>⚠️ Image failed to load. <a href=\\'${displayUrl}\\' target=\\'_blank\\' style=\\'color: blue; text-decoration: underline;\\'>Click here to view</a></p>';" />
+        <a href="${displayUrl}" download="try-on-result.jpg" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; padding: 6px 10px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(0,0,0,0.9)'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='rgba(0,0,0,0.7)'; this.style.transform='scale(1)';" title="Download image">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Download
+        </a>
+        <p style="font-size: 12px; color: #666; margin-top: 8px;">✨ Virtual Try-On Result</p>
+      </div>`;
+      console.log('Adding try-on result message to chat');
       addTryOnMessage(resultMessage, 'bot');
     }
   };
 
   const handleTryOnError = (error: string) => {
     // Send error message directly to try-on chat WITHOUT going through webhook
-    if (addTryOnMessage) {
+    if (addTryOnMessage && removeTryOnLoadingMessage) {
+      // Remove loading message first
+      if (loadingMessageIdRef.current) {
+        removeTryOnLoadingMessage(loadingMessageIdRef.current);
+        loadingMessageIdRef.current = null;
+      }
+      
       addTryOnMessage(`⚠️ Try-On Error: ${error}`, 'bot');
     }
   };
@@ -128,6 +217,7 @@ const removeImage = () => {
       {isTryOnMode ? (
         /* Try-On Mode: Use ImageGenerator Component */
         <ImageGenerator 
+          onGenerationStart={handleTryOnStart}
           onGenerationComplete={handleTryOnComplete}
           onError={handleTryOnError}
           preloadedClothImage={preloadedClothImage}
