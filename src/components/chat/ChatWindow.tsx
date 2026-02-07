@@ -1,6 +1,6 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, ChevronDown } from 'lucide-react';
 import { Message } from '@/types/chat';
 import MessageBubble from './MessageBubble';
 import LoadingAnimation from './LoadingAnimation';
@@ -41,14 +41,48 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 }) => {
   const { theme } = useTheme();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Check if user is at the bottom of the chat
+  const checkIfAtBottom = () => {
+    if (!messagesContainerRef.current) return true;
+    
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const threshold = 100; // pixels from bottom to consider "at bottom"
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < threshold;
+    
+    return isAtBottom;
+  };
+
+  // Handle scroll event to show/hide button
+  const handleScroll = () => {
+    const isAtBottom = checkIfAtBottom();
+    setShowScrollButton(!isAtBottom);
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading, transcript]);
+
+  // Add scroll listener
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    
+    // Check initial state
+    handleScroll();
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [messages]);
 
   // Clean and normalize text
   const cleanText = (text: string): string => {
@@ -306,7 +340,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Compact Message Area */}
-      <div className="flex-1 relative h-full overflow-y-auto p-3 space-y-3 scrollbar-hide">
+      <div ref={messagesContainerRef} className="flex-1 relative h-full overflow-y-auto p-3 space-y-3 scrollbar-hide">
         {allMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-10 h-10 rounded-full overflow-hidden mr-2 shadow-md bg-white mb-2">
@@ -323,6 +357,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </>
         )}
         <div ref={messagesEndRef} />
+
+        {/* Scroll to Bottom Button */}
+        {showScrollButton && (
+          <button
+            onClick={scrollToBottom}
+            className="fixed bottom-24 right-4 w-8 h-8 bg-gradient-to-r from-gray-700 to-black text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center z-10 border border-gray-600/50"
+            aria-label="Scroll to bottom"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Input */}
