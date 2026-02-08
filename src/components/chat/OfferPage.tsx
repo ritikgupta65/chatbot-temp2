@@ -19,7 +19,10 @@ const OfferPage: React.FC<OfferPageProps> = ({ onGoHome }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const OFFERS_WEBHOOK_URL = '/api/offers';
+  // Use full webhook URL from environment variable
+  // For production: full n8n webhook URL
+  // For localhost: /api/offers (uses proxy)
+  const OFFERS_WEBHOOK_URL = import.meta.env.VITE_OFFERS_WEBHOOK_URL || '/api/offers';
 
   // Fetch offers from webhook
   const fetchOffers = async () => {
@@ -27,6 +30,8 @@ const OfferPage: React.FC<OfferPageProps> = ({ onGoHome }) => {
     setError(null);
     try {
       console.log('Fetching offers from webhook...');
+      console.log('Environment:', import.meta.env.MODE);
+      console.log('Webhook URL from env:', import.meta.env.VITE_OFFERS_WEBHOOK_URL);
       console.log('Request URL:', OFFERS_WEBHOOK_URL);
       
       const response = await fetch(OFFERS_WEBHOOK_URL, {
