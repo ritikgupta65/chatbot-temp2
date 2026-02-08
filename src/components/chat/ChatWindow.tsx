@@ -75,8 +75,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!container) return;
 
     container.addEventListener('scroll', handleScroll);
-    
-    // Check initial state
     handleScroll();
 
     return () => {
