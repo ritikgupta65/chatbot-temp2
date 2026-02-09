@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const n8nWebhookUrl = process.env.N8N_TRY_ON_WEBHOOK_URL || 'https://ritik-n8n-e9673da43cf4.herokuapp.com/webhook/try-on';
+    const n8nWebhookUrl = process.env.N8N_TRY_ON_WEBHOOK_URL || 'https://ritik-n8n-e9673da43cf4.herokuapp.com/webhook/2598d12d-a13f-4759-ae5b-1e0262e33b9c';
     
     console.log('Proxying try-on request to n8n:', n8nWebhookUrl);
     

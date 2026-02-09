@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'userId is required' });
     }
 
-    const n8nStatusUrl = process.env.N8N_TRY_ON_STATUS_URL || 'https://ritik-n8n-e9673da43cf4.herokuapp.com/webhook/try-on-status';
+    const n8nStatusUrl = process.env.N8N_TRY_ON_STATUS_URL || 'https://ritik-n8n-e9673da43cf4.herokuapp.com/webhook/webhook/try-on-status';
     const fullUrl = `${n8nStatusUrl}?userId=${userId}`;
     
     console.log('Polling try-on status from n8n:', fullUrl);
