@@ -19,10 +19,9 @@ const OfferPage: React.FC<OfferPageProps> = ({ onGoHome }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use full webhook URL from environment variable
-  // For production: full n8n webhook URL
-  // For localhost: /api/offers (uses proxy)
-  const OFFERS_WEBHOOK_URL = import.meta.env.VITE_OFFERS_WEBHOOK_URL || '/api/offers';
+  // Always use local API route (works in both localhost and production)
+  // Vercel serverless function will proxy to n8n
+  const OFFERS_WEBHOOK_URL = '/api/offers';
 
   // Fetch offers from webhook
   const fetchOffers = async () => {

@@ -25,11 +25,10 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   // Ref to prevent double-execution (more reliable than state)
   const isGeneratingRef = useRef(false);
 
-  // Use environment variables for API endpoints
-  // For production: full n8n webhook URLs
-  // For localhost: /api/try-on (uses proxy)
-  const PROXY_URL = import.meta.env.VITE_TRY_ON_WEBHOOK_URL || '/api/try-on';
-  const POLL_URL = import.meta.env.VITE_TRY_ON_STATUS_URL || '/api/try-on-status';
+  // Always use local API routes (works in both localhost and production)
+  // Vercel serverless functions will proxy to n8n
+  const PROXY_URL = '/api/try-on';
+  const POLL_URL = '/api/try-on-status';
 
   // Initialize userId on component mount
   useEffect(() => {
@@ -147,6 +146,11 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
     isGeneratingRef.current = true;
     setIsGenerating(true);
     console.log('=== STARTING TRY-ON GENERATION ===');
+    console.log('Environment:', import.meta.env.MODE);
+    console.log('Try-On Webhook URL from env:', import.meta.env.VITE_TRY_ON_WEBHOOK_URL);
+    console.log('Try-On Status URL from env:', import.meta.env.VITE_TRY_ON_STATUS_URL);
+    console.log('PROXY_URL:', PROXY_URL);
+    console.log('POLL_URL:', POLL_URL);
     
     let generationSuccessful = false;
 
@@ -163,7 +167,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         timestamp: new Date().toISOString()
       };
 
-      console.log('Sending request to webhook via proxy...');
+      console.log('Sending request to webhook...');
+      console.log('Request URL:', PROXY_URL);
 
       // Step 1: Start the generation (quick response with executionId)
       const startResponse = await fetch(PROXY_URL, {
