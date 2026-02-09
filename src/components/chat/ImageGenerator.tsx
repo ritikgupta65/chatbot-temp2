@@ -25,9 +25,11 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   // Ref to prevent double-execution (more reliable than state)
   const isGeneratingRef = useRef(false);
 
-  // Use Vite proxy to avoid CORS issues
-  const PROXY_URL = '/api/try-on';
-  const POLL_URL = '/api/try-on-status';
+  // Use environment variables for API endpoints
+  // For production: full n8n webhook URLs
+  // For localhost: /api/try-on (uses proxy)
+  const PROXY_URL = import.meta.env.VITE_TRY_ON_WEBHOOK_URL || '/api/try-on';
+  const POLL_URL = import.meta.env.VITE_TRY_ON_STATUS_URL || '/api/try-on-status';
 
   // Initialize userId on component mount
   useEffect(() => {
@@ -247,7 +249,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   return (
     <div className="w-full">
       {/* Images Preview - Compact & Right-Aligned (matching original design) */}
-      {(humanImage || clothImage) && (
+      {/* Hide preview when generating */}
+      {(humanImage || clothImage) && !isGenerating && (
         <div className="mb-1 flex justify-end">
           <div className="w-1/2 p-1.5 bg-white/40 backdrop-blur-md rounded-md border border-gray-600/30">
             <div className="flex items-center justify-between mb-1">
